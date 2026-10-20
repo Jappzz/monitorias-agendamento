@@ -4,11 +4,11 @@
 
 ## 1. Continuação do projeto inicial
 
-Este documento complementa o projeto de 18/10 com o mapeamento dos testes da história escolhida, mantendo o escopo, as classes e as responsabilidades já descritos.
+Este documento complementa o projeto de 18/10 com o mapeamento dos testes da história escolhida, mantendo o escopo e as responsabilidades já descritos. A principal atualização é o armazenamento: os dados serão guardados em um banco SQLite, e não em estruturas em memória.
 
 **História 1 - Prioridade Alta:** Como aluno, eu quero escolher uma disciplina, ver os horários livres e reservar um atendimento para ser atendido pelo monitor sem conflito de horário.
 
-Os testes serão escritos posteriormente com unittest e chamarão diretamente as funções do serviço de agendamento. Cada teste terá seus próprios dados em memória, sem depender da execução dos demais ou de entrada pelo teclado.
+Os testes serão escritos posteriormente com unittest e chamarão diretamente as funções do serviço de agendamento. Cada teste criará seu próprio banco SQLite temporário, mantido apenas na memória durante a execução do teste, com tabelas novas e dados preparados pelo próprio teste. Assim, os testes não dependem uns dos outros, não usam arquivos de banco e não exigem entrada pelo teclado.
 
 ## 2. Mapeamento dos critérios de aceitação
 
@@ -29,6 +29,15 @@ Os nomes abaixo são os nomes previstos para os futuros testes. Os cenários des
 
 ## 3. Decisões mantidas e conclusão da etapa
 
-O limite inicial será de uma reserva por aluno na mesma disciplina, com possibilidade de configuração. A semana vai de segunda-feira a domingo, considerando a data do atendimento. As vagas serão calculadas pela capacidade menos as reservas; horários cancelados ficarão indisponíveis. Toda recusa deverá preservar os registros existentes.
+O limite inicial será de uma reserva por aluno na mesma disciplina, com possibilidade de configuração. A semana vai de segunda-feira a domingo, considerando a data do atendimento. As vagas serão calculadas pela capacidade menos as reservas; horários cancelados ficarão indisponíveis e suas reservas não contam para o limite semanal. Toda recusa deverá preservar os registros existentes, pois as validações ocorrem antes da gravação da reserva.
 
-Os cinco critérios estão associados a testes previstos, incluindo cenários de sucesso e de falha. Cadastro, cancelamento pelo monitor, notificações e relatórios continuam fora desta história; os dados necessários serão preparados previamente.
+Os cinco critérios estão associados a testes previstos, incluindo cenários de sucesso e de falha. Cadastro, cancelamento pelo monitor, notificações e relatórios continuam fora desta história; os dados necessários serão preparados previamente, pelos testes ou por uma carga inicial de dados de exemplo.
+
+## 4. Registro de mudanças
+Armazenamento em banco SQLite: o projeto de 18/10 previa dados em memória. Passamos a usar SQLite, biblioteca padrão do Python, para que os dados sejam guardados em tabelas. Nos testes, o banco é temporário e criado do zero a cada teste, preservando o isolamento previsto.
+
+Camada de acesso ao banco: foi criado o repositório, separado do serviço, para que as regras da história não dependam de comandos SQL.
+
+Conexão do banco: o módulo do banco passou a entregar uma conexão aberta, em vez de apenas criar as tabelas e fechá-la, porque um banco temporário em memória desaparece quando a conexão é fechada.
+
+Limite semanal: o padrão do sistema é de uma reserva por semana na disciplina, como neste projeto, e não duas, como aparece na redação da História 1; o valor continua configurável.
