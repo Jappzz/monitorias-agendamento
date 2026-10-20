@@ -2,7 +2,9 @@
 
 import sqlite3
 from datetime import date, time
+from pathlib import Path
 
+from banco import CAMINHO_BANCO, inicializar_banco
 from modelos import Aluno, Disciplina, HorarioAtendimento, Reserva
 
 
@@ -27,8 +29,21 @@ def _linha_para_horario(linha: sqlite3.Row) -> HorarioAtendimento:
 
 
 class RepositorioAgendamento:
-    def __init__(self, conexao: sqlite3.Connection):
-        self.conexao = conexao
+    def __init__(self, caminho: str | Path = CAMINHO_BANCO):
+        """Cria o banco (se preciso) com inicializar_banco e abre a conexão.
+
+        O inicializar_banco abre e fecha a própria conexão, então o
+        repositório abre a sua. Nos testes, passe o caminho de um arquivo
+        temporário (não use ":memory:", pois o banco sumiria ao fechar a
+        conexão do inicializar_banco).
+        """
+        inicializar_banco(caminho)
+        self.conexao = sqlite3.connect(caminho)
+        self.conexao.row_factory = sqlite3.Row
+        self.conexao.execute("PRAGMA foreign_keys = ON")
+
+    def fechar(self) -> None:
+        self.conexao.close()
 
     # --- carga de dados (usada pelos testes e por scripts de dados iniciais)
 
@@ -69,31 +84,26 @@ class RepositorioAgendamento:
         linha = self.conexao.execute(
             _SELECT_HORARIO + " WHERE h.id = ?", (horario_id,)
         ).fetchone()
-
         return _linha_para_horario(linha) if linha else None
 
     def listar_horarios_da_disciplina(
         self, disciplina_id: int
     ) -> list[HorarioAtendimento]:
-        
         linhas = self.conexao.execute(
             _SELECT_HORARIO
             + " WHERE h.disciplina_id = ? ORDER BY h.data, h.inicio",
             (disciplina_id,),
         ).fetchall()
-        
         return [_linha_para_horario(linha) for linha in linhas]
 
     def listar_reservas_do_horario(
         self, horario: HorarioAtendimento
     ) -> list[Reserva]:
-        
         linhas = self.conexao.execute(
             "SELECT a.ra, a.nome FROM reservas r "
             "JOIN alunos a ON a.ra = r.aluno_ra WHERE r.horario_id = ?",
             (horario.id,),
         ).fetchall()
-
         return [Reserva(Aluno(l["ra"], l["nome"]), horario) for l in linhas]
 
     def contar_reservas_ativas_do_aluno(
@@ -108,7 +118,6 @@ class RepositorioAgendamento:
             "AND h.cancelado = 0 AND h.data BETWEEN ? AND ?",
             (aluno_ra, disciplina_id, inicio.isoformat(), fim.isoformat()),
         ).fetchone()
-        
         return linha["total"]
 
     # --- escrita da reserva
