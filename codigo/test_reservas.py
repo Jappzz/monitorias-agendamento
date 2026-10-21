@@ -9,7 +9,7 @@ from datetime import date, time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from excecoes import HorarioCanceladoError, HorarioLotadoError, LimiteSemanalError
+from excecoes import HorarioCanceladoError, HorarioLotadoError, LimiteSemanalError, ReservaDuplicadaError, HorarioNaoEncontradoError
 from modelos import Aluno, Disciplina, HorarioAtendimento, Reserva
 from repositorio import RepositorioAgendamento
 from servico import ServicoReserva
@@ -162,6 +162,90 @@ class TestConsultaEReserva(unittest.TestCase):
         reservas_da_ana = [r for r in antes if r[1] == self.ana.ra]
         self.assertEqual(len(reservas_da_ana), 2)
         self.assertEqual(self.repo.listar_reservas_do_horario(terceiro), [])
+
+    def test_limite_permite_reserva_em_outra_semana(self):
+        # 18/10/2026 é domingo (semana de 12 a 18); 19/10 é segunda (19 a 25).
+        domingo = HorarioAtendimento(
+            5, self.calculo, "Marcos", date(2026, 10, 18), time(14), 1
+        )
+        segunda = HorarioAtendimento(
+            6, self.calculo, "Marcos", date(2026, 10, 19), time(14), 1
+        )
+        self.repo.salvar_horario(domingo)
+        self.repo.salvar_horario(segunda)
+        self.servico.reservar(self.ana, domingo)
+ 
+        reserva = self.servico.reservar(self.ana, segunda)
+ 
+        self.assertEqual(reserva.aluno, self.ana)
+        self.assertEqual(reserva.horario, segunda)
+        horarios_da_ana = sorted(
+            r[2] for r in self.reservas_gravadas() if r[1] == self.ana.ra
+        )
+        self.assertEqual(horarios_da_ana, [5, 6])
+
+    def test_limite_permite_reserva_em_outra_disciplina(self):
+        # O limite é por disciplina: Cálculo e Física na mesma semana.
+        self.servico.reservar(self.ana, self.disponivel)
+ 
+        reserva = self.servico.reservar(self.ana, self.outra_disciplina)
+ 
+        self.assertEqual(reserva.aluno, self.ana)
+        self.assertEqual(reserva.horario, self.outra_disciplina)
+        horarios_da_ana = sorted(
+            r[2] for r in self.reservas_gravadas() if r[1] == self.ana.ra
+        )
+        self.assertEqual(horarios_da_ana, [1, 4])
+
+    def test_limite_desconsidera_reserva_em_horario_cancelado(self):
+        # O serviço recusaria essa reserva; ela é gravada direto para simular
+        # um horário que foi cancelado depois de já ter reservas.
+        self.repo.inserir_reserva(Reserva(self.ana, self.cancelado))
+ 
+        reserva = self.servico.reservar(self.ana, self.disponivel)
+ 
+        self.assertEqual(reserva.horario, self.disponivel)
+        horarios_da_ana = sorted(
+            r[2] for r in self.reservas_gravadas() if r[1] == self.ana.ra
+        )
+        self.assertEqual(horarios_da_ana, [1, 3])
+
+
+    def test_reserva_recusa_mesmo_aluno_no_mesmo_horario(self):
+        # Com limite 2 o limite semanal não barra; só a regra de duplicidade.
+        servico = ServicoReserva(self.repo, limite_semanal=2)
+        servico.reservar(self.ana, self.disponivel)
+        antes = self.reservas_gravadas()
+ 
+        with self.assertRaisesRegex(ReservaDuplicadaError, "já reservou"):
+            servico.reservar(self.ana, self.disponivel)
+ 
+        self.assertEqual(self.reservas_gravadas(), antes)
+        gravadas = self.repo.listar_reservas_do_horario(self.disponivel)
+        self.assertEqual(self.disponivel.vagas_disponiveis(gravadas), 1)
+ 
+    def test_reserva_permite_outro_aluno_no_mesmo_horario_em_grupo(self):
+        # Limite 2 porque o Bruno já tem uma reserva em Cálculo no setUp.
+        servico = ServicoReserva(self.repo, limite_semanal=2)
+        servico.reservar(self.ana, self.disponivel)
+ 
+        reserva = servico.reservar(self.bruno, self.disponivel)
+ 
+        gravadas = self.repo.listar_reservas_do_horario(self.disponivel)
+        self.assertEqual(reserva.aluno, self.bruno)
+        self.assertEqual(len(gravadas), 2)
+        self.assertEqual(self.disponivel.vagas_disponiveis(gravadas), 0)
+ 
+    def test_reserva_recusa_horario_inexistente(self):
+        inexistente = HorarioAtendimento(
+            99, self.calculo, "Marcos", date(2026, 10, 20), time(18), 1
+        )
+        antes = self.reservas_gravadas()
+ 
+        with self.assertRaisesRegex(HorarioNaoEncontradoError, "não encontrado"):
+            self.servico.reservar(self.ana, inexistente)
+ 
+        self.assertEqual(self.reservas_gravadas(), antes)
 
 if __name__ == "__main__":
     unittest.main()

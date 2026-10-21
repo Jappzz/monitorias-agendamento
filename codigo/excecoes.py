@@ -19,3 +19,6 @@ class HorarioLotadoError(AgendamentoError):
 
 class LimiteSemanalError(AgendamentoError):
     """O aluno atingiu o limite de reservas da semana na disciplina."""
+
+class ReservaDuplicadaError(AgendamentoError):
+    """O aluno já tem reserva neste mesmo horário."""

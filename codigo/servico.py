@@ -7,6 +7,7 @@ from excecoes import (
     HorarioLotadoError,
     HorarioNaoEncontradoError,
     LimiteSemanalError,
+    ReservaDuplicadaError
 )
 from modelos import Aluno, Disciplina, HorarioAtendimento, Reserva
 from repositorio import RepositorioAgendamento
@@ -45,6 +46,10 @@ class ServicoReserva:
             raise HorarioCanceladoError("Este horário foi cancelado pelo monitor.")
 
         reservas = self.repositorio.listar_reservas_do_horario(atual)
+        if any(reserva.aluno.ra == aluno.ra for reserva in reservas):
+            raise ReservaDuplicadaError("O aluno já reservou este horário.")
+
+            
         if atual.vagas_disponiveis(reservas) == 0:
             raise HorarioLotadoError("Não há vagas neste horário.")
 
