@@ -9,7 +9,7 @@ from datetime import date, time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from excecoes import HorarioCanceladoError, HorarioLotadoError
+from excecoes import HorarioCanceladoError, HorarioLotadoError, LimiteSemanalError
 from modelos import Aluno, Disciplina, HorarioAtendimento, Reserva
 from repositorio import RepositorioAgendamento
 from servico import ServicoReserva
@@ -121,6 +121,47 @@ class TestConsultaEReserva(unittest.TestCase):
         self.assertEqual(gravadas, [Reserva(self.ana, horario)])
         self.assertEqual(horario.vagas_disponiveis(gravadas), 1)
 
+    def test_limite_recusa_segunda_reserva_na_mesma_semana(self):
+        # Todos os horários de Cálculo ficam na semana de 19 a 25/10/2026.
+        outro_dia = HorarioAtendimento(
+            5, self.calculo, "Marcos", date(2026, 10, 21), time(14), 1
+        )
+        self.repo.salvar_horario(outro_dia)
+        # A Ana é usada porque o Bruno já tem uma reserva em Cálculo no setUp.
+        self.servico.reservar(self.ana, self.disponivel)
+        antes = self.reservas_gravadas()
+ 
+        with self.assertRaisesRegex(LimiteSemanalError, "Limite"):
+            self.servico.reservar(self.ana, outro_dia)
+ 
+        self.assertEqual(self.reservas_gravadas(), antes)
+        self.assertEqual(self.repo.listar_reservas_do_horario(outro_dia), [])
+ 
+    def test_limite_configuravel_permite_duas_reservas(self):
+        servico = ServicoReserva(self.repo, limite_semanal=2)
+        segundo = HorarioAtendimento(
+            5, self.calculo, "Marcos", date(2026, 10, 21), time(14), 1
+        )
+        terceiro = HorarioAtendimento(
+            6, self.calculo, "Marcos", date(2026, 10, 22), time(14), 1
+        )
+        self.repo.salvar_horario(segundo)
+        self.repo.salvar_horario(terceiro)
+ 
+        primeira = servico.reservar(self.ana, self.disponivel)
+        segunda = servico.reservar(self.ana, segundo)
+ 
+        self.assertEqual(primeira.horario, self.disponivel)
+        self.assertEqual(segunda.horario, segundo)
+        antes = self.reservas_gravadas()
+ 
+        with self.assertRaises(LimiteSemanalError):
+            servico.reservar(self.ana, terceiro)
+ 
+        self.assertEqual(self.reservas_gravadas(), antes)
+        reservas_da_ana = [r for r in antes if r[1] == self.ana.ra]
+        self.assertEqual(len(reservas_da_ana), 2)
+        self.assertEqual(self.repo.listar_reservas_do_horario(terceiro), [])
 
 if __name__ == "__main__":
     unittest.main()
