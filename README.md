@@ -34,7 +34,7 @@ Na conferência de 21/10, os **14 testes passaram**, com resultado `OK`. Cada te
 | 18/10 | Escolha da História 1 e descrição das classes e responsabilidades. | Thiago |
 | 19/10 | Thiago fez o mapeamento dos testes, as classes e a criação do banco. Andre fez a integração com o banco, as regras de reserva e a demonstração. | Thiago e Andre |
 | 20/10 | Thiago fez seis testes. Andre fez mais oito e acrescentou a verificação de reserva duplicada. | Thiago e Andre |
-| 21/10 | Thiago escreveu o README e conferiu a execução. A documentação técnica ficou para Andre. | Thiago e Andre  |
+| 21/10 | Thiago escreveu o README, conferiu a execução e organizou as cinco histórias na documentação técnica. A documentação dos testes ficou para Andre. | Thiago e Andre |
 | 22/10 | Vamos revisar, gerar o PDF, conferir o ZIP e fazer o envio. Ainda não realizado. | Thiago e Andre, conforme o plano |
 
 Até 20/10, os commits foram feitos nas datas do planejamento, sem atraso registrado. No plano, colocamos os dois em cada etapa, mas dividimos as tarefas como está na tabela.
