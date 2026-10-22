@@ -44,3 +44,5 @@ Até 20/10, os commits foram feitos nas datas do planejamento, sem atraso regist
 No começo, os dados ficariam só em memória. Depois escolhemos SQLite para não perder as reservas ao fechar o programa. Criamos `repositorio.py` para concentrar o acesso ao banco e deixar as regras em `servico.py`.
 
 O projeto de 19/10 previa testes com banco em memória e dizia que a inicialização devolveria uma conexão aberta. Na implementação, ela fecha a conexão e devolve o caminho do arquivo. Por isso, os testes usam arquivos temporários, mantendo cada teste separado dos outros.
+
+Durante os testes, percebemos que, com o limite semanal maior que um, o mesmo aluno poderia reservar duas vezes o mesmo horário e ocupar duas vagas de um atendimento em grupo. Por isso acrescentamos ao `servico.py` a verificação de reserva duplicada, com a exceção `ReservaDuplicadaError`, que não estava no projeto inicial. Também escrevemos quatro testes além dos dez mapeados: persistência após reabrir o banco, reserva duplicada, outro aluno no mesmo horário em grupo e horário inexistente.
